@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crucigrama Mini · ES</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1108;
+    --paper: #f5f0e8;
+    --accent: #c8410a;
+    --accent2: #2a5f8f;
+    --grid-line: #1a1108;
+    --cell-size: 52px;
+    --correct: #2d7a3a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+    background-image: 
+      repeating-linear-gradient(0deg, transparent, transparent 31px, rgba(26,17,8,0.06) 31px, rgba(26,17,8,0.06) 32px);
+  }
+
+  header {
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 2.5px solid var(--ink);
+    padding-bottom: 10px;
+    margin-bottom: 4px;
+  }
+
+  .masthead {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+
+  .masthead span {
+    color: var(--accent);
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  .date-line {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+  }
+
+  .tagline {
+    width: 100%;
+    max-width: 560px;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    margin-bottom: 28px;
+    font-weight: 500;
+  }
+
+  .game-area {
+    width: 100%;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+
+  /* GRID */
+  #grid-container {
+    position: relative;
+  }
+
+  .grid {
+    display: grid;
+    border: 2.5px solid var(--grid-line);
+    background: var(--grid-line);
+    gap: 1.5px;
+    transition: opacity 0.3s;
+  }
+
+  .cell {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    background: var(--paper);
+    position: relative;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .cell.black {
+    background: var(--ink);
+    cursor: default;
+  }
+
+  .cell.highlighted {
+    background: #e8e0cc;
+  }
+
+  .cell.selected {
+    background: #f0c060;
+  }
+
+  .cell.correct {
+    background: #c8f0cc;
+  }
+
+  .cell input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: var(--ink);
+    text-transform: uppercase;
+    cursor: pointer;
+    caret-color: transparent;
+    outline: none;
+  }
+
+  .cell input:focus {
+    outline: none;
+  }
+
+  .cell-number {
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  /* CLUES */
+  .clues-wrapper {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .clue-section h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-bottom: 1.5px solid var(--ink);
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+  }
+
+  .clue-item {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 7px;
+    cursor: pointer;
+    border-radius: 2px;
+    padding: 2px 4px;
+    transition: background 0.12s;
+  }
+
+  .clue-item:hover {
+    background: rgba(26,17,8,0.07);
+  }
+
+  .clue-item.active {
+    background: #f0c060;
+  }
+
+  .clue-item.solved {
+    opacity: 0.45;
+    text-decoration: line-through;
+  }
+
+  .clue-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--accent);
+    min-width: 18px;
+    padding-top: 1px;
+  }
+
+  .clue-text {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    font-weight: 300;
+  }
+
+  /* CONTROLS */
+  .controls {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  button {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 10px 20px;
+    border: 2px solid var(--ink);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  button:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  button.primary:hover {
+    background: #a33208;
+    border-color: #a33208;
+  }
+
+  /* STATUS */
+  #status-bar {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+    min-height: 18px;
+    text-align: center;
+  }
+
+  /* WIN overlay */
+  #win-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,17,8,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  #win-overlay.show {
+    display: flex;
+    animation: fadeIn 0.4s ease;
+  }
+
+  @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+
+  .win-card {
+    background: var(--paper);
+    padding: 40px 48px;
+    text-align: center;
+    border: 3px solid var(--ink);
+    max-width: 340px;
+  }
+
+  .win-card .big {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .win-card .sub {
+    font-size: 0.85rem;
+    opacity: 0.6;
+    margin-bottom: 24px;
+  }
+
+  .timer-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.4rem;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  #timer {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--accent2);
+    font-weight: 500;
+  }
+
+  @media (max-width: 480px) {
+    :root { --cell-size: 44px; }
+    .clues-wrapper { grid-template-columns: 1fr; gap: 16px; }
+    .masthead { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="masthead">Cruci<span>mini</span></div>
+  <div class="date-line" id="date-display"></div>
+</header>
+<div class="tagline">vocabulario · cultura · español</div>
+
+<div class="game-area">
+  <div style="display:flex;align-items:center;gap:16px;width:100%;justify-content:space-between;">
+    <div id="status-bar">Cargando puzzle...</div>
+    <div id="timer">0:00</div>
+  </div>
+
+  <div id="grid-container">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="clues-wrapper">
+    <div class="clue-section">
+      <h3>Horizontal →</h3>
+      <div id="across-clues"></div>
+    </div>
+    <div class="clue-section">
+      <h3>Vertical ↓</h3>
+      <div id="down-clues"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button onclick="checkPuzzle()">Comprobar</button>
+    <button onclick="revealAll()">Revelar</button>
+    <button class="primary" onclick="newPuzzle()">Nuevo puzzle ↻</button>
+  </div>
+</div>
+
+<div id="win-overlay">
+  <div class="win-card">
+    <div class="big">¡Perfecto!</div>
+    <div class="sub">Crucigrama completado</div>
+    <div class="timer-display" id="win-time"></div>
+    <button class="primary" onclick="newPuzzle();document.getElementById('win-overlay').classList.remove('show')">Siguiente →</button>
+  </div>
+</div>
+
+<script>
+const WORD_DB = [
+  {word:"SOL",clue:"Estrella central de nuestro sistema"},
+  {word:"MAR",clue:"Masa de agua salada entre continentes"},
+  {word:"PAZ",clue:"Ausencia de conflicto o guerra"},
+  {word:"RIO",clue:"Corriente de agua dulce que fluye"},
+  {word:"OJO",clue:"Órgano sensorial de la visión"},
+  {word:"PAN",clue:"Alimento básico de harina horneada"},
+  {word:"LUZ",clue:"Radiación visible por el ojo humano"},
+  {word:"FIN",clue:"Último punto o conclusión"},
+  {word:"REY",clue:"Monarca masculino de un reino"},
+  {word:"ORO",clue:"Metal precioso de color amarillo"},
+  {word:"VOZ",clue:"Sonido producido al hablar o cantar"},
+  {word:"RED",clue:"Internet, de manera coloquial"},
+  {word:"GEL",clue:"Sustancia viscosa para el cabello"},
+  {word:"UNO",clue:"Primer número natural"},
+  {word:"ECO",clue:"Sonido reflejado que se repite"},
+  {word:"ERA",clue:"Período histórico extenso"},
+  {word:"GAS",clue:"Estado de la materia sin forma fija"},
+  {word:"LEY",clue:"Norma jurídica de obligado cumplimiento"},
+  {word:"PIE",clue:"Extremidad inferior del cuerpo"},
+  {word:"AJO",clue:"Bulbo culinario de olor muy intenso"},
+  {word:"OLA",clue:"Ondulación en la superficie del mar"},
+  {word:"CAL",clue:"Mineral blanco usado en construcción"},
+  {word:"PEZ",clue:"Vertebrado acuático con escamas"},
+  {word:"BOA",clue:"Serpiente constrictora tropical"},
+  {word:"GEN",clue:"Unidad básica de la herencia biológica"},
+  {word:"EJE",clue:"Línea imaginaria de rotación"},
+  {word:"MES",clue:"Período de aproximadamente 30 días"},
+  {word:"OCA",clue:"Ave palmípeda similar al ganso"},
+  {word:"UVA",clue:"Fruto del viñedo"},
+  {word:"OSO",clue:"Mamífero plantígrado que hiberna"},
+  {word:"SER",clue:"Verbo esencial de existencia en español"},
+  {word:"TIC",clue:"Movimiento involuntario y repetitivo"},
+  {word:"HAZ",clue:"Conjunto de rayos de luz paralelos"},
+  {word:"SOY",clue:"Primera persona singular del presente de 'ser'"},
+  {word:"FEO",clue:"Lo contrario de bello o atractivo"},
+  {word:"CID",clue:"El ___, héroe épico castellano medieval"},
+  {word:"CAP",clue:"Gorra de visera en inglés, también abrev. capítulo"},
+  {word:"YAK",clue:"Buey tibetano de pelo largo y espeso"},
+  {word:"SAL",clue:"Condimento mineral blanco, cloruro sódico"},
+  {word:"DIA",clue:"Período de 24 horas"},
+  {word:"RAZ",clue:"___ de ola, ola gigante y repentina"},
+  {word:"VID",clue:"Planta trepadora que produce uvas"},
+  {word:"RUE",clue:"Sentir arrepentimiento (del inglés)"},
+  {word:"COL",clue:"Verdura de hoja verde, la berza"},
+  {word:"HOZ",clue:"Herramienta agrícola para segar"},
+  {word:"TOS",clue:"Expulsión brusca de aire por la garganta"},
+  {word:"PUS",clue:"Líquido espeso de las infecciones"},
+  {word:"RON",clue:"Bebida alcohólica derivada de la caña de azúcar"},
+  {word:"TAL",clue:"De esa manera o de ese tipo"},
+  {word:"YAP",clue:"Ladrido agudo y repetitivo"},
+  {word:"MIL",clue:"Diez veces cien"},
+  {word:"VAN",clue:"Tercera persona plural del presente de 'ir'"},
+  {word:"DON",clue:"Tratamiento de respeto o habilidad natural"},
+  {word:"TON",clue:"Unidad de masa equivalente a 1000 kg"},
+  {word:"GRA",clue:"Abreviatura de 'gracias' en mensajería"},
+  {word:"FRU",clue:"Prefijo que indica fruto en botánica"},
+  {word:"VEZ",clue:"Ocasión o turno en una secuencia"},
+  {word:"HOY",clue:"El día presente, este día"},
+  {word:"AYE",clue:"Exclamación de dolor o sorpresa"},
+  {word:"TAN",clue:"En tal grado o de esa manera"},
+  {word:"MAS",clue:"Pero, conjunción adversativa literaria"},
+  {word:"CAN",clue:"Perro, en lenguaje literario o arcaico"},
+  {word:"POR",clue:"Preposición que indica causa o medio"},
+  {word:"SUR",clue:"Punto cardinal opuesto al norte"},
+  {word:"TEA",clue:"Antorcha de madera resinosa"},
+  {word:"HUB",clue:"Centro neurálgico de conexiones"},
+  {word:"ZEN",clue:"Corriente budista japonesa de meditación"},
+  {word:"RAP",clue:"Género musical de origen afroamericano"},
+  {word:"POP",clue:"Género musical popular y comercial"},
+  {word:"ROC",clue:"Ave mitológica de tamaño gigantesco"},
+  {word:"ZAP",clue:"Hacer zapping entre canales de televisión"},
+  {word:"TUB",clue:"Recipiente cilíndrico grande, bañera"},
+  {word:"NIT",clue:"Liendre, huevo de piojo"},
+  {word:"PAL",clue:"Amigo, colega (del inglés)"},
+  {word:"TAR",clue:"Alquitrán (del inglés)"},
+  {word:"LAX",clue:"Laxo, poco estricto"},
+  {word:"BIS",clue:"Repetición de una actuación a petición del público"},
+  {word:"EGO",clue:"El yo, sentido del propio ser en psicología"},
+  {word:"GUR",clue:"Líder espiritual en el hinduismo, gurú"},
+  {word:"OHM",clue:"Unidad de resistencia eléctrica"},
+  {word:"ALT",clue:"Tecla de función del teclado"},
+  {word:"ADN",clue:"Molécula portadora de la información genética (sigla)"},
+  {word:"ARN",clue:"Ácido nucleico mensajero del ADN (sigla)"},
+  {word:"IMC",clue:"Índice de Masa Corporal (sigla)"},
+  {word:"TAC",clue:"Tomografía Axial Computarizada (sigla)"},
+  {word:"ECG",clue:"Electrocardiograma (sigla)"},
+  {word:"HIV",clue:"Virus de Inmunodeficiencia Humana (sigla en inglés)"},
+  {word:"VIH",clue:"Virus de Inmunodeficiencia Humana (sigla)"},
+  {word:"ONU",clue:"Organización de las Naciones Unidas (sigla)"},
+  {word:"OMS",clue:"Organismo mundial de la salud (sigla)"},
+  {word:"IVA",clue:"Impuesto al Valor Añadido (sigla)"},
+  {word:"DNI",clue:"Documento Nacional de Identidad (sigla)"},
+  {word:"PIB",clue:"Producto Interior Bruto (sigla)"},
+  {word:"UVI",clue:"Unidad de Vigilancia Intensiva (sigla)"},
+  {word:"AVE",clue:"Tren de Alta Velocidad Española (sigla)"},
+  {word:"TVE",clue:"Televisión Española, canal público (sigla)"},
+  {word:"INE",clue:"Instituto Nacional de Estadística (sigla)"},
+  {word:"BOE",clue:"Boletín Oficial del Estado (sigla)"},
+  {word:"PDF",clue:"Formato de Documento Portátil (sigla)"},
+  {word:"GPS",clue:"Sistema de Posicionamiento Global (sigla)"},
+  {word:"PIN",clue:"Número personal de identificación (sigla)"},
+  {word:"USB",clue:"Puerto de datos universal (sigla)"},
+  {word:"ONG",clue:"Organización No Gubernamental (sigla)"},
+  {word:"FMI",clue:"Fondo Monetario Internacional (sigla)"},
+  {word:"UCI",clue:"Unidad de Cuidados Intensivos (sigla)"},
+  {word:"APA",clue:"Asociación de Padres de Alumnos (sigla)"},
+  {word:"NIE",clue:"Número de Identidad de Extranjero (sigla)"},
+  {word:"ERE",clue:"Expediente de Regulación de Empleo (sigla)"},
+  {word:"CIA",clue:"Agencia de inteligencia estadounidense (sigla)"},
+  {word:"FBI",clue:"Policía federal de EE. UU. (sigla)"},
+  {word:"OPS",clue:"Abreviatura de operaciones"},
+  {word:"APK",clue:"Formato de instalación de apps Android (sigla)"},
+  {word:"URL",clue:"Dirección de una página web (sigla)"},
+  {word:"RAM",clue:"Memoria de acceso aleatorio (sigla)"},
+  {word:"CPU",clue:"Unidad central de procesamiento (sigla)"},
+  {word:"IPC",clue:"Índice de Precios al Consumo (sigla)"},
+  {word:"ROI",clue:"Retorno sobre la inversión (sigla en inglés)"},
+  {word:"RPM",clue:"Revoluciones por minuto (sigla)"},
+  {word:"SOS",clue:"Señal internacional de socorro (sigla)"},
+  {word:"SMS",clue:"Mensaje de texto móvil (sigla)"},
+  {word:"APP",clue:"Aplicación para dispositivo móvil"},
+  {word:"TOP",clue:"Lo mejor de una categoría o lista"},
+  {word:"KIT",clue:"Conjunto de elementos para un fin"},
+  {word:"BUS",clue:"Vehículo de transporte público colectivo"},
+  {word:"BAR",clue:"Local de hostelería o unidad de presión"},
+  {word:"GYM",clue:"Gimnasio, en inglés coloquial"},
+  {word:"LAB",clue:"Laboratorio, abreviatura coloquial"},
+  {word:"VIP",clue:"Persona muy importante (sigla en inglés)"},
+  {word:"SPA",clue:"Centro de tratamientos de agua y bienestar"},
+  {word:"WEB",clue:"Red informática global de páginas"},
+  {word:"BOT",clue:"Programa automatizado en internet"},
+  {word:"ROL",clue:"Papel o función que desempeña alguien"},
+  {word:"FAN",clue:"Seguidor entusiasta de algo o alguien"},
+  {word:"ADS",clue:"Anuncios publicitarios digitales (sigla en inglés)"},
+  {word:"API",clue:"Interfaz de programación de aplicaciones (sigla)"},
+  {word:"ETA",clue:"Organización vasca ya disuelta (sigla) / hora estimada de llegada"},
+  {word:"NIL",clue:"Nada, cero (del latín o inglés)"},
+  {word:"ALA",clue:"Extremidad para volar o parte lateral"},
+  {word:"ASA",clue:"Ácido acetilsalicílico (sigla) / asa de un recipiente"},
+  {word:"AGA",clue:"Oficial turco de alto rango"},
+  {word:"ARA",clue:"Constelación austral del altar"},
+  {word:"IRA",clue:"Sentimiento intenso de enfado"},
+  {word:"ORA",clue:"Conjunción distributiva: ___ bien"},
+  {word:"URA",clue:"Sufijo que indica resultado de acción"},
+  {word:"AMO",clue:"Dueño o señor de algo"},
+  {word:"AMI",clue:"Amigo, en francés"},
+  {word:"ANA",clue:"Nombre propio femenino muy común"},
+  {word:"ANO",clue:"Orificio del tubo digestivo"},
+  {word:"APO",clue:"Prefijo griego que indica separación"},
+  {word:"ATO",clue:"Sufijo que indica cargo o función"},
+  {word:"AZO",clue:"Que contiene nitrógeno en química"},
+  {word:"ENA",clue:"Sufijo de femenino en nombres propios"},
+  {word:"ESA",clue:"Pronombre demostrativo femenino"},
+  {word:"IDA",clue:"Acción de ir hacia un destino"},
+  {word:"ION",clue:"Átomo o molécula con carga eléctrica"},
+  {word:"ODA",clue:"Composición lírica de exaltación"},
+  {word:"OPA",clue:"Oferta pública de adquisición (sigla)"},
+  {word:"OVA",clue:"Plural de óvulo o huevo en biología"},
+  {word:"UNA",clue:"Artículo indeterminado femenino"},
+  {word:"URO",clue:"Bovino salvaje extinto de Europa"},
+  {word:"ABD",clue:"Abreviatura de abdominal"},
+  {word:"ABS",clue:"Sistema antibloqueo de frenos (sigla)"},
+  {word:"ACE",clue:"Saque directo en tenis"},
+  {word:"ACM",clue:"Asociación de maquinaria computacional (sigla)"},
+  {word:"ACT",clue:"Acto, en terminología teatral anglófona"},
+  {word:"AGO",clue:"Abreviatura de agosto"},
+  {word:"AGU",clue:"Agudo, acento en la última sílaba"},
+  {word:"AIR",clue:"Aire o melodía suave (del inglés)"},
+  {word:"AIS",clue:"Sistema de identificación automática (sigla)"},
+  {word:"AIT",clue:"Islote pequeño en escosés"},
+  {word:"ALD",clue:"Aldehído, en nomenclatura química"},
+  {word:"ALG",clue:"Prefijo de alga en taxonomía"},
+  {word:"ALL",clue:"Todo, en inglés"},
+  {word:"ALM",clue:"Almendra, abreviatura botánica"},
+  {word:"ALU",clue:"Unidad aritmético-lógica en informática (sigla)"},
+  {word:"AMB",clue:"Prefijo que indica ambiente o ambos"},
+  {word:"AMD",clue:"Fabricante de microprocesadores (sigla)"},
+  {word:"AME",clue:"Ame, forma del verbo amar"},
+  {word:"AMP",clue:"Amperio, unidad de intensidad eléctrica"},
+  {word:"AMS",clue:"Sistema de gestión de activos (sigla)"},
+  {word:"AMU",clue:"Unidad de masa atómica (sigla)"},
+  {word:"AND",clue:"Y, conjunción copulativa en inglés"},
+  {word:"ANE",clue:"Sufijo de hidrocarburo saturado en química"},
+  {word:"ANF",clue:"Anfibio, abreviatura taxonómica"},
+  {word:"ANG",clue:"Ángulo, abreviatura en geometría"},
+  {word:"ANI",clue:"Pájaro tropical del género Crotophaga"},
+  {word:"ANS",clue:"Respuestas, en inglés plural"},
+  {word:"ANT",clue:"Hormiga en inglés; también prefijo de anterior"},
+  {word:"APE",clue:"Simio sin cola / imitar en inglés"},
+  {word:"ARC",clue:"Arco eléctrico o geométrico"},
+  {word:"ARE",clue:"Son, forma del verbo 'to be' en inglés"},
+  {word:"ARF",clue:"Ladrido onomatopéyico"},
+  {word:"ARK",clue:"Arca de Noé en la tradición bíblica"},
+  {word:"ARM",clue:"Brazo en inglés / fuerza armada"},
+  {word:"ARS",clue:"Arte en latín"},
+  {word:"ART",clue:"Arte, en inglés"},
+  {word:"ASH",clue:"Ceniza o árbol fresno en inglés"},
+  {word:"ASK",clue:"Preguntar en inglés"},
+  {word:"ASP",clue:"Serpiente venenosa del Mediterráneo"},
+  {word:"ASS",clue:"Burro / trasero en inglés coloquial"},
+  {word:"AST",clue:"Prefijo de astro en términos científicos"},
+  {word:"ATE",clue:"Comió, pasado de 'eat' en inglés"},
+  {word:"ATM",clue:"Cajero automático (sigla en inglés)"},
+  {word:"AXE",clue:"Hacha en inglés"},
+  {word:"AYU",clue:"Pez de río japonés comestible"},
+  {word:"AGUA",clue:"H₂O, líquido vital para la vida"},
+  {word:"LUNA",clue:"Satélite natural de la Tierra"},
+  {word:"AMOR",clue:"Sentimiento profundo de afecto y cariño"},
+  {word:"ROJO",clue:"Color del tomate maduro o la sangre"},
+  {word:"MESA",clue:"Mueble con superficie plana y patas"},
+  {word:"AZUL",clue:"Color del cielo despejado"},
+  {word:"ROSA",clue:"Flor con espinas y fragancia delicada"},
+  {word:"GATO",clue:"Felino doméstico que maúlla"},
+  {word:"LOBO",clue:"Cánido salvaje que aúlla en manada"},
+  {word:"PATO",clue:"Ave acuática que grazna"},
+  {word:"VINO",clue:"Bebida alcohólica de uva fermentada"},
+  {word:"TORO",clue:"Bovino macho adulto, símbolo de España"},
+  {word:"BESO",clue:"Muestra de afecto con los labios"},
+  {word:"OBRA",clue:"Creación artística o literaria"},
+  {word:"ISLA",clue:"Territorio rodeado completamente de agua"},
+  {word:"NUBE",clue:"Masa de vapor de agua en el cielo"},
+  {word:"PIEL",clue:"Cubierta exterior del cuerpo humano"},
+  {word:"SOPA",clue:"Plato líquido caliente con ingredientes"},
+  {word:"CAMA",clue:"Mueble para dormir y descansar"},
+  {word:"CINE",clue:"Séptimo arte, sala de proyección"},
+  {word:"DEDO",clue:"Apéndice articulado de manos y pies"},
+  {word:"LIMA",clue:"Capital de Perú / herramienta abrasiva"},
+  {word:"OSLO",clue:"Capital del Reino de Noruega"},
+  {word:"POLO",clue:"Extremo del eje terrestre / helado de palo"},
+  {word:"LAVA",clue:"Magma que fluye de un volcán"},
+  {word:"CAFE",clue:"Bebida estimulante de granos tostados"},
+  {word:"FLOR",clue:"Estructura reproductora vistosa de la planta"},
+  {word:"ARTE",clue:"Expresión creativa de la humanidad"},
+  {word:"ALMA",clue:"Principio vital o espiritual de la persona"},
+  {word:"HOJA",clue:"Parte plana y verde de una planta"},
+  {word:"PERA",clue:"Fruta de pepita con forma de lágrima"},
+  {word:"FARO",clue:"Torre luminosa que guía a los navegantes"},
+  {word:"MIEL",clue:"Sustancia dulce producida por las abejas"},
+  {word:"ROCA",clue:"Masa sólida de minerales naturales"},
+  {word:"TAZA",clue:"Recipiente pequeño para bebidas calientes"},
+  {word:"LAGO",clue:"Gran masa de agua interior rodeada de tierra"},
+  {word:"TELA",clue:"Material flexible de fibras entretejidas"},
+  {word:"DADO",clue:"Cubo con números del uno al seis"},
+  {word:"REMO",clue:"Pala larga para mover embarcaciones"},
+  {word:"PINO",clue:"Árbol de hoja perenne con piñas"},
+  {word:"ARCO",clue:"Curva o arma que lanza flechas"},
+  {word:"BOTA",clue:"Calzado de caña alta"},
+  {word:"MAPA",clue:"Representación gráfica del territorio"},
+  {word:"PELO",clue:"Fibra queratinosa que crece en el cuero cabelludo"},
+  {word:"SEDE",clue:"Lugar principal de una institución u organización"},
+  {word:"AUGE",clue:"Punto más alto o momento de mayor esplendor"},
+  {word:"FLAN",clue:"Postre de huevo, leche y caramelo"},
+  {word:"HADA",clue:"Ser mágico femenino de los cuentos"},
+  {word:"HORA",clue:"Período de 60 minutos"},
+  {word:"DUNA",clue:"Acumulación de arena en forma de colina"},
+  {word:"PUMA",clue:"Gran felino americano también llamado puma o cougar"},
+  {word:"SETA",clue:"Hongo de sombrero comestible del bosque"},
+  {word:"ACNE",clue:"Afección dermatológica con granos y espinillas"},
+  {word:"YOGA",clue:"Disciplina física y mental de origen indio"},
+  {word:"JAZZ",clue:"Género musical de origen afroamericano"},
+  {word:"AVAL",clue:"Garantía económica o respaldo de tercero"},
+  {word:"CLAN",clue:"Grupo tribal familiar unido por lazos de sangre"},
+  {word:"OVAL",clue:"Con forma elíptica parecida a un huevo"},
+  {word:"OTAN",clue:"Alianza militar de países occidentales (sigla)"},
+  {word:"NASA",clue:"Agencia espacial de los Estados Unidos (sigla)"},
+  {word:"FIFA",clue:"Organismo rector del fútbol mundial (sigla)"},
+  {word:"ONCE",clue:"Organización Nacional de Ciegos Españoles (sigla)"},
+  {word:"AENA",clue:"Gestora de aeropuertos y navegación aérea de España (sigla)"},
+  {word:"INEM",clue:"Instituto Nacional de Empleo, hoy SEPE (sigla)"},
+  {word:"IMEI",clue:"Identificador único de dispositivo móvil (sigla)"},
+  {word:"WIFI",clue:"Conexión inalámbrica a internet (sigla)"},
+  {word:"CHIP",clue:"Circuito integrado de silicio en microelectrónica"},
+  {word:"BETA",clue:"Segunda letra del alfabeto griego / versión de prueba"},
+  {word:"ALFA",clue:"Primera letra del alfabeto griego"},
+  {word:"GAMA",clue:"Tercera letra griega / rango de valores o colores"},
+  {word:"DOMO",clue:"Cúpula o estructura semiesférica"},
+  {word:"ECHO",clue:"Eco en inglés / servicio de voz de Amazon"},
+  {word:"FOCO",clue:"Punto de convergencia de luz o atención"},
+  {word:"HILO",clue:"Fibra muy delgada para coser"},
+  {word:"IRIS",clue:"Parte coloreada del ojo / flor de jardín"},
+  {word:"JUDO",clue:"Arte marcial japonés de lucha"},
+  {word:"KILO",clue:"Prefijo que indica mil unidades"},
+  {word:"LEMA",clue:"Frase o principio que guía una acción"},
+  {word:"MIMO",clue:"Arte escénico sin palabras / cariño exagerado"},
+  {word:"NEON",clue:"Gas noble usado en letreros luminosos"},
+  {word:"OCIO",clue:"Tiempo libre dedicado al descanso o la diversión"},
+  {word:"PAGO",clue:"Entrega de dinero por un bien o servicio"},
+  {word:"QUIO",clue:"Isla griega del Egeo"},
+  {word:"RUTA",clue:"Camino o itinerario planificado"},
+  {word:"SAGA",clue:"Serie larga de obras relacionadas / epopeya nórdica"},
+  {word:"TACO",clue:"Tortilla mexicana rellena / taco de billar"},
+  {word:"UREA",clue:"Compuesto nitrogenado presente en la orina"},
+  {word:"VACA",clue:"Hembra del toro, mamífero lechero"},
+  {word:"XENO",clue:"Prefijo que indica extranjero o ajeno"},
+  {word:"YUCA",clue:"Planta tropical cuya raíz es comestible"},
+  {word:"ZONA",clue:"Área o región delimitada con características comunes"},
+  {word:"ACTO",clue:"Hecho o acción / división de una obra teatral"},
+  {word:"BODA",clue:"Ceremonia de matrimonio"},
+  {word:"CERO",clue:"Número que representa ausencia de cantidad"},
+  {word:"DAGA",clue:"Arma blanca corta parecida a un puñal"},
+  {word:"ELAN",clue:"Entusiasmo y vivacidad (del francés)"},
+  {word:"FUGA",clue:"Huida precipitada / composición musical contrapuntística"},
+  {word:"GIRO",clue:"Movimiento circular / transferencia bancaria"},
+  {word:"HERO",clue:"Personaje principal de una historia"},
+  {word:"INCA",clue:"Miembro del pueblo indígena del antiguo Perú"},
+  {word:"JINX",clue:"Mal de ojo o mala suerte (del inglés)"},
+  {word:"LOCO",clue:"Persona que ha perdido la razón"},
+  {word:"MAGO",clue:"Persona que practica la magia"},
+  {word:"NAVE",clue:"Barco / espacio interior de una iglesia"},
+  {word:"ODIO",clue:"Sentimiento intenso de aversión"},
+  {word:"PARA",clue:"Preposición que indica finalidad o destino"},
+  {word:"QUIZ",clue:"Prueba de conocimientos con preguntas"},
+  {word:"RAMO",clue:"Conjunto de flores cortadas / sector profesional"},
+  {word:"SINO",clue:"Destino o fatalidad / conjunción adversativa"},
+  {word:"TOMO",clue:"Cada uno de los volúmenes de una obra"},
+  {word:"URNA",clue:"Recipiente para votos o cenizas"},
+  {word:"VELO",clue:"Tela fina y transparente que cubre"},
+  {word:"XILO",clue:"Prefijo que alude a la madera"},
+  {word:"YEMA",clue:"Parte central amarilla del huevo / brote vegetal"},
+  {word:"ZEUS",clue:"Dios supremo de la mitología griega"},
+  {word:"ABEJA",clue:"Insecto himenóptero productor de miel"},
+  {word:"BRUMA",clue:"Niebla densa próxima al mar o la costa"},
+  {word:"CAMPO",clue:"Zona rural alejada de la ciudad"},
+  {word:"DRAMA",clue:"Obra teatral con conflicto intenso"},
+  {word:"EMOJI",clue:"Pequeña imagen expresiva en mensajes digitales"},
+  {word:"FIBRA",clue:"Hilo natural o artificial / fibra óptica"},
+  {word:"GLOBO",clue:"Esfera o aerostato de gas ligero"},
+  {word:"HUESO",clue:"Pieza rígida del esqueleto"},
+  {word:"INTER",clue:"Prefijo latino que indica entre o dentro"},
+  {word:"JULIO",clue:"Séptimo mes del año / unidad de energía"},
+  {word:"KARMA",clue:"Ley de causa y efecto en filosofía oriental"},
+  {word:"LINFA",clue:"Líquido claro del sistema linfático"},
+  {word:"MAREA",clue:"Subida y bajada periódica del nivel del mar"},
+  {word:"NIVEL",clue:"Altura relativa de algo / herramienta de construcción"},
+  {word:"OASIS",clue:"Lugar fértil en el desierto con agua"},
+  {word:"PANDA",clue:"Oso blanco y negro de China"},
+  {word:"QUESO",clue:"Alimento lácteo cuajado y madurado"},
+  {word:"REUMA",clue:"Enfermedad inflamatoria de articulaciones"},
+  {word:"SERVO",clue:"Motor de control preciso / abreviatura de servidor"},
+  {word:"TUMOR",clue:"Masa anormal de tejido con crecimiento descontrolado"},
+  {word:"ULTRA",clue:"Prefijo que indica más allá o extremo"},
+  {word:"VAPOR",clue:"Gas formado por evaporación del agua"},
+  {word:"XILOL",clue:"Disolvente orgánico derivado del benceno"},
+  {word:"YODOI",clue:"Compuesto del yodo en química"},
+  {word:"ZOMBI",clue:"Muerto viviente en la mitología haitiana"},
+  {word:"ACIDO",clue:"Sustancia con pH inferior a 7"},
+  {word:"BOLSA",clue:"Mercado de valores / recipiente de tela o plástico"},
+  {word:"CAUCE",clue:"Lecho por donde discurre un río"},
+  {word:"DEBUT",clue:"Primera actuación pública de un artista"},
+  {word:"ENERO",clue:"Primer mes del año"},
+  {word:"FEMUR",clue:"Hueso del muslo, el más largo del cuerpo"},
+  {word:"GRAVE",clue:"Serio y de mucha importancia / nota musical baja"},
+  {word:"HEROE",clue:"Persona admirada por sus hazañas"},
+  {word:"INODO",clue:"Sin olor, adjetivo técnico"},
+  {word:"JUSTO",clue:"Equitativo, que da a cada uno lo que merece"},
+  {word:"KOALA",clue:"Marsupial australiano que come eucalipto"},
+  {word:"LASER",clue:"Haz de luz coherente amplificada (sigla en inglés)"},
+  {word:"MIEDO",clue:"Emoción ante una amenaza o peligro"},
+  {word:"NEURO",clue:"Prefijo que alude al sistema nervioso"},
+  {word:"OMEGA",clue:"Última letra del alfabeto griego"},
+  {word:"PRIMA",clue:"Hija del tío o tía / pago adicional"},
+  {word:"RELOJ",clue:"Instrumento para medir el tiempo"},
+  {word:"SIGMA",clue:"Decimoctava letra del alfabeto griego"},
+  {word:"TALON",clue:"Parte posterior del pie / comprobante de pago"},
+  {word:"UMBRA",clue:"Zona de sombra total durante un eclipse"},
+  {word:"VISOR",clue:"Parte de un casco que protege la vista"},
+  {word:"XILOF",clue:"Prefijo de xilófono, instrumento de madera"},
+  {word:"YERMO",clue:"Terreno árido y sin vegetación"},
+  {word:"ZAFRA",clue:"Cosecha de la caña de azúcar"},
+  {word:"PLAZA",clue:"Espacio abierto en el centro de una ciudad"},
+  {word:"NOCHE",clue:"Período de oscuridad entre dos días"},
+  {word:"LIBRO",clue:"Conjunto de páginas impresas encuadernadas"},
+  {word:"PERRO",clue:"Mamífero doméstico, mejor amigo del hombre"},
+  {word:"VERDE",clue:"Color de la vegetación y los prados"},
+  {word:"PLAYA",clue:"Orilla arenosa junto al mar"},
+  {word:"VIAJE",clue:"Desplazamiento a un lugar lejano"},
+  {word:"PIZZA",clue:"Plato italiano de masa con tomate y queso"},
+  {word:"SIGLO",clue:"Período de cien años"},
+  {word:"CALLE",clue:"Vía pública entre edificios urbanos"},
+  {word:"FORMA",clue:"Manera de hacer algo / figura o contorno"},
+  {word:"CARTA",clue:"Mensaje escrito / menú de un restaurante"},
+  {word:"SALSA",clue:"Condimento líquido / baile caribeño"},
+  {word:"TANGO",clue:"Baile y música originarios de Argentina"},
+  {word:"TRIGO",clue:"Cereal con el que se elabora el pan"},
+  {word:"HUEVO",clue:"Célula reproductora puesta por aves"},
+  {word:"BANCO",clue:"Institución financiera / asiento largo"},
+  {word:"PRADO",clue:"Extensión de tierra con hierba natural"},
+  {word:"CLIMA",clue:"Condiciones atmosféricas típicas de una región"},
+  {word:"DUELO",clue:"Combate entre dos / dolor por una pérdida"},
+  {word:"LLANO",clue:"Terreno sin elevaciones ni desniveles"},
+  {word:"MONTE",clue:"Elevación natural del terreno"},
+  {word:"NIETO",clue:"Hijo o hija del hijo o de la hija"},
+  {word:"OLIVO",clue:"Árbol mediterráneo del que se extrae aceite"},
+  {word:"PAUSA",clue:"Interrupción temporal de una actividad"},
+  {word:"REINO",clue:"Territorio gobernado por un rey o reina"},
+  {word:"SABOR",clue:"Sensación gustativa de un alimento"},
+  {word:"UNION",clue:"Acción de unir o conjunto unido"},
+  {word:"VUELO",clue:"Desplazamiento aéreo en avión"},
+  {word:"ARENA",clue:"Partículas finas de roca en playas y desiertos"},
+  {word:"BRUJA",clue:"Personaje con poderes mágicos maléficos"},
+  {word:"COBRE",clue:"Metal rojizo conductor de la electricidad"},
+  {word:"DELTA",clue:"Cuarta letra griega / desembocadura fluvial en abanico"},
+  {word:"FINCA",clue:"Propiedad rústica o terreno agrícola"},
+  {word:"GENIO",clue:"Persona con inteligencia o talento extraordinario"},
+  {word:"HIELO",clue:"Agua en estado sólido por debajo de 0ºC"},
+  {word:"JAULA",clue:"Caja enrejada para encerrar animales"},
+  {word:"LINER",clue:"Barco transatlántico de gran porte"},
+  {word:"MADRE",clue:"Mujer que ha dado a luz o que cría a un hijo"},
+  {word:"NARIZ",clue:"Órgano del olfato y de la respiración"},
+  {word:"OESTE",clue:"Punto cardinal donde se pone el sol"},
+  {word:"PADRE",clue:"Progenitor masculino"},
+  {word:"RADIO",clue:"Medio de comunicación por ondas hertzianas"},
+  {word:"SUELO",clue:"Superficie sobre la que se pisa"},
+  {word:"TIGRE",clue:"Gran felino rayado nativo de Asia"},
+  {word:"AVION",clue:"Aeronave de motor para transporte de personas"},
+  {word:"BURRO",clue:"Animal doméstico de carga, asno"},
+  {word:"CERDO",clue:"Mamífero doméstico del que se obtiene el jamón"},
+  {word:"ESPIA",clue:"Agente secreto de los servicios de inteligencia"},
+  {word:"FOBIA",clue:"Miedo irracional e intenso hacia algo"},
+  {word:"GRIPE",clue:"Enfermedad vírica respiratoria estacional"},
+  {word:"RENFE",clue:"Red nacional ferroviaria española (sigla)"},
+  {word:"RADAR",clue:"Sistema de detección por ondas de radio (sigla)"},
+  {word:"SONAR",clue:"Sistema de detección submarina por sonido (sigla)"},
+  {word:"OVNI",clue:"Objeto Volador No Identificado (sigla)"},
+  {word:"SIDA",clue:"Síndrome de Inmunodeficiencia Adquirida (sigla)"},
+  {word:"OCDE",clue:"Organización para la Cooperación y Desarrollo Económico (sigla)"},
+  {word:"SEPE",clue:"Servicio Público de Empleo Estatal, antes INEM (sigla)"},
+  {word:"COPE",clue:"Cadena de radio católica española (sigla)"},
+  {word:"RTVE",clue:"Corporación pública española de radio y televisión (sigla)"},
+  {word:"PSOE",clue:"Principal partido de izquierda de España (sigla)"},
+  {word:"IRPF",clue:"Impuesto sobre la Renta de las Personas Físicas (sigla)"},
+  {word:"ABDOM",clue:"Abreviatura de abdomen en medicina"},
+  {word:"ACERO",clue:"Aleación de hierro y carbono muy resistente"},
+  {word:"AFIJO",clue:"Elemento que se añade a la raíz de una palabra"},
+  {word:"AGUJA",clue:"Instrumento punzante para coser o inyectar"},
+  {word:"ALBUM",clue:"Colección de fotografías o canciones"},
+  {word:"ALETA",clue:"Apéndice que permite nadar a los peces"},
+  {word:"ALGA",clue:"Organismo fotosintético acuático"},
+  {word:"ALOE",clue:"Planta suculenta de propiedades medicinales"},
+  {word:"ALTAR",clue:"Mesa sagrada en la que se celebra la misa"},
+  {word:"AMBAR",clue:"Resina fósil de color dorado"},
+  {word:"AMEBA",clue:"Microorganismo unicelular que se mueve con pseudópodos"},
+  {word:"ANSIA",clue:"Deseo intenso o angustia"},
+  {word:"ANTRO",clue:"Caverna / local de ambiente dudoso"},
+  {word:"APICE",clue:"Punta extrema o punto más alto"},
+  {word:"ARADO",clue:"Herramienta agrícola para labrar la tierra"},
+  {word:"ARDOR",clue:"Calor intenso / pasión o entusiasmo vivo"},
+  {word:"AREIA",clue:"Arena en portugués"},
+  {word:"ARFAR",clue:"Balancear la proa del barco en el mar"},
+  {word:"ARGON",clue:"Gas noble inerte del grupo 18"},
+  {word:"ARNIA",clue:"Colmena, recipiente donde viven las abejas"},
+  {word:"ARNES",clue:"Conjunto de correas para sujetar o guiar"},
+  {word:"AROMA",clue:"Olor agradable, fragancia"},
+  {word:"ASADO",clue:"Carne o alimento cocinado al fuego directo"},
+  {word:"ASCUA",clue:"Brasa encendida sin llama"},
+  {word:"ASILO",clue:"Institución de acogida / refugio político"},
+  {word:"ASTRO",clue:"Cuerpo celeste, estrella o planeta"},
+  {word:"ATLAS",clue:"Colección de mapas / primera vértebra cervical"},
+  {word:"ATOMO",clue:"Unidad mínima de un elemento químico"},
+  {word:"ATICO",clue:"Piso más alto de un edificio, bajo cubierta"},
+  {word:"AUDIO",clue:"Relativo al sonido o su reproducción"},
+  {word:"AUTOR",clue:"Persona que crea una obra intelectual"},
+  {word:"AVENA",clue:"Cereal usado en copos para el desayuno"},
+  {word:"AXILA",clue:"Cavidad bajo la unión del brazo con el tronco"},
+  {word:"AYUNO",clue:"Abstención de comer durante un período"},
+  {word:"AZANA",clue:"Hazaña o acción heroica notable"},
+  {word:"AZOTE",clue:"Golpe dado con un látigo"},
+  {word:"BABOR",clue:"Lado izquierdo de un barco mirando hacia proa"},
+  {word:"BAHIA",clue:"Entrada del mar en la costa, más pequeña que un golfo"},
+  {word:"BALDE",clue:"Cubo para transportar líquidos"},
+  {word:"BARBA",clue:"Pelo que crece en la parte inferior de la cara"},
+  {word:"BARCO",clue:"Embarcación de gran tamaño"},
+  {word:"BARRO",clue:"Mezcla de tierra y agua / arcilla para cerámica"},
+  {word:"BASIC",clue:"Lenguaje de programación básico (sigla)"},
+  {word:"BAZO",clue:"Órgano abdominal del sistema linfático"},
+  {word:"BICHO",clue:"Animal pequeño, insecto o alimaña"},
+  {word:"BILIS",clue:"Líquido digestivo producido por el hígado"},
+  {word:"BIRRA",clue:"Cerveza, en lenguaje coloquial italiano"},
+  {word:"BISBE",clue:"Obispo en catalán"},
+  {word:"BIZCO",clue:"Que tiene los ojos desviados, estrabismo"},
+  {word:"BOCIO",clue:"Agrandamiento de la glándula tiroides"},
+  {word:"BORDE",clue:"Orilla o extremo de algo"},
+  {word:"BORLA",clue:"Adorno esférico de hilos o flecos"},
+  {word:"BOTON",clue:"Pieza para abrochar ropa / pulsador eléctrico"},
+  {word:"BROCA",clue:"Pieza giratoria de un taladro para perforar"},
+  {word:"BULBO",clue:"Órgano vegetal subterráneo como la cebolla"},
+  {word:"CABRA",clue:"Mamífero rumiante de cuernos curvados"},
+  {word:"CACTO",clue:"Planta suculenta de zonas áridas con espinas"},
+  {word:"CALOR",clue:"Sensación de temperatura elevada"},
+  {word:"CALVO",clue:"Persona sin cabello en la cabeza"},
+  {word:"CANAL",clue:"Vía de agua artificial / cadena de televisión"},
+  {word:"CANA",clue:"Planta de tallo hueco y nudoso / vasito de cerveza"},
+  {word:"CANON",clue:"Pieza de artillería / desfiladero profundo"},
+  {word:"CAPAS",clue:"Plural de capa, vestimenta o estrato"},
+  {word:"CARGO",clue:"Puesto o responsabilidad laboral"},
+  {word:"CARNE",clue:"Tejido muscular de los animales como alimento"},
+  {word:"CARPA",clue:"Pez de agua dulce / toldo para eventos"},
+  {word:"CARRO",clue:"Vehículo de ruedas tirado por animales"},
+  {word:"CAUSA",clue:"Motivo o razón de algo / ideal por el que se lucha"},
+  {word:"CAVAR",clue:"Hacer un hoyo en la tierra"},
+  {word:"CEBRA",clue:"Mamífero africano con rayas blancas y negras"},
+  {word:"CEJAS",clue:"Arcos de pelo sobre los ojos"},
+  {word:"CELDA",clue:"Habitación pequeña de una cárcel o monasterio"},
+  {word:"CICLO",clue:"Serie de fenómenos que se repiten en orden"},
+  {word:"CIFRA",clue:"Número o dato estadístico"},
+  {word:"CIRIO",clue:"Vela larga y gruesa de cera"},
+  {word:"CIRCO",clue:"Espectáculo de acrobacia y animales"},
+  {word:"CLAVE",clue:"Elemento fundamental / código secreto"},
+  {word:"COBRA",clue:"Serpiente venenosa que abulta el cuello"},
+  {word:"COCOA",clue:"Cacao en polvo para bebidas"},
+  {word:"COFIA",clue:"Gorro de tela de enfermera o cocinera"},
+  {word:"COLMO",clue:"Límite máximo o lo más destacado de algo"},
+  {word:"COLOR",clue:"Propiedad de la luz percibida por el ojo"},
+  {word:"COMA",clue:"Signo de puntuación / estado de inconsciencia"},
+  {word:"CORAL",clue:"Animal marino colonial / color entre rojo y naranja"},
+  {word:"CORTE",clue:"Acción de cortar / palacio real"},
+  {word:"COSTA",clue:"Zona de tierra que bordea el mar"},
+  {word:"COTON",clue:"Tela de algodón ligera"},
+  {word:"CREMA",clue:"Preparado cosmético o culinario espeso"},
+  {word:"CROMO",clue:"Metal brillante / imagen de colección"},
+  {word:"CUEVA",clue:"Cavidad natural en la roca o la tierra"},
+  {word:"CULPA",clue:"Responsabilidad de una falta o error"},
+  {word:"CURVA",clue:"Línea que no es recta"},
+  {word:"DANZA",clue:"Arte de moverse rítmicamente al son de la música"},
+  {word:"DARDO",clue:"Proyectil pequeño para lanzar a diana"},
+  {word:"DATIL",clue:"Fruto dulce de la palmera datilera"},
+  {word:"DEUDA",clue:"Obligación de pagar o devolver algo"},
+  {word:"DIETA",clue:"Régimen alimenticio / conjunto de alimentos habituales"},
+  {word:"DISCO",clue:"Objeto circular para almacenar música o datos"},
+  {word:"DOSIS",clue:"Cantidad de medicamento prescrita"},
+  {word:"DUCHA",clue:"Baño con agua en forma de lluvia"},
+  {word:"DUQUE",clue:"Título nobiliario superior al marqués"},
+  {word:"EDEMA",clue:"Acumulación de líquido en tejidos corporales"},
+  {word:"ELBOW",clue:"Codo en inglés"},
+  {word:"ELOTE",clue:"Mazorca de maíz tierno en México"},
+  {word:"EMAIL",clue:"Correo electrónico"},
+  {word:"ENEMA",clue:"Irrigación intestinal con líquido"},
+  {word:"EPICA",clue:"Género literario de grandes hazañas"},
+  {word:"ERGOT",clue:"Hongo parásito de los cereales"},
+  {word:"ETAPA",clue:"Fase o período dentro de un proceso"},
+  {word:"ETNIA",clue:"Comunidad humana con cultura e historia comunes"},
+  {word:"EXTRA",clue:"Adicional o suplementario"},
+  {word:"FAENA",clue:"Trabajo pesado o tarea difícil"},
+  {word:"FANGO",clue:"Barro espeso o lodo"},
+  {word:"FARDO",clue:"Paquete grande y pesado de mercancía"},
+  {word:"FARSA",clue:"Obra teatral cómica / engaño o simulación"},
+  {word:"FAUNA",clue:"Conjunto de animales de una región"},
+  {word:"FAVOR",clue:"Acción de ayuda que se hace voluntariamente"},
+  {word:"FEUDO",clue:"Territorio medieval bajo dominio de un señor"},
+  {word:"FIRMA",clue:"Rúbrica personal / empresa o sociedad"},
+  {word:"FLECO",clue:"Adorno de hilos colgantes en el borde"},
+  {word:"FLORA",clue:"Conjunto de plantas de una región"},
+  {word:"FLUJO",clue:"Movimiento continuo de un líquido o gas"},
+  {word:"FONDO",clue:"Parte más baja o lejana de algo"},
+  {word:"FOTON",clue:"Partícula elemental de la luz"},
+  {word:"FRENO",clue:"Mecanismo para reducir la velocidad"},
+  {word:"FRUTA",clue:"Producto comestible de las plantas con semillas"},
+  {word:"FUEGO",clue:"Combustión con llamas, calor y luz"},
+  {word:"FULAR",clue:"Pañuelo largo y ligero de seda"},
+  {word:"FUNGO",clue:"Hongo en terminología científica"},
+  {word:"FURIA",clue:"Cólera o enfado muy intenso"},
+  {word:"GARRA",clue:"Uña curva y afilada de animales carnívoros"},
+  {word:"GASTO",clue:"Cantidad de dinero que se consume"},
+  {word:"GALON",clue:"Unidad de volumen anglosajona / galón de pintura"},
+  {word:"GAMBA",clue:"Crustáceo marino comestible"},
+  {word:"GASA",clue:"Tela muy fina y transparente / vendaje médico"},
+  {word:"GAZON",clue:"Césped bien cuidado de un jardín"},
+  {word:"GERMA",clue:"Germen o semilla de un cereal"},
+  {word:"GESTO",clue:"Movimiento del cuerpo para expresar algo"},
+  {word:"GOLPE",clue:"Impacto brusco entre dos objetos"},
+  {word:"GORRA",clue:"Prenda de vestir que cubre la cabeza"},
+  {word:"GOZO",clue:"Alegría intensa y placer"},
+  {word:"GRAMO",clue:"Unidad de masa del sistema métrico"},
+  {word:"GRANO",clue:"Semilla de un cereal / imperfección cutánea"},
+  {word:"GRASA",clue:"Sustancia lipídica sólida o líquida"},
+  {word:"GRUPO",clue:"Conjunto de personas o cosas"},
+  {word:"GUION",clue:"Texto de un programa o película / signo ortográfico"},
+  {word:"GUSTO",clue:"Sentido que percibe sabores / preferencia"},
+  {word:"HABLA",clue:"Uso oral del lenguaje"},
+  {word:"HABER",clue:"Verbo auxiliar del español"},
+  {word:"HECES",clue:"Residuos sólidos de la digestión"},
+  {word:"HIDRA",clue:"Ser mitológico de muchas cabezas / animal acuático"},
+  {word:"HIMEN",clue:"Membrana del aparato genital femenino"},
+  {word:"HIPNO",clue:"Prefijo griego que significa sueño"},
+  {word:"HONDA",clue:"Arma para lanzar piedras / motocicleta japonesa"},
+  {word:"HONOR",clue:"Cualidad moral de rectitud e integridad"},
+  {word:"HONGO",clue:"Organismo sin clorofila que vive de materia orgánica"},
+  {word:"HUMOR",clue:"Estado de ánimo / capacidad de hacer reír"},
+  {word:"ICONO",clue:"Imagen representativa / símbolo cultural"},
+  {word:"IMPAR",clue:"Número que no es divisible por dos"},
+  {word:"INDIO",clue:"Natural de la India / pueblo originario de América"},
+  {word:"INFRA",clue:"Prefijo que indica por debajo o inferior"},
+  {word:"ISTMO",clue:"Franja de tierra que une dos masas continentales"},
+  {word:"JACAL",clue:"Choza o vivienda rústica en México"},
+  {word:"JADEO",clue:"Respiración agitada y entrecortada"},
+  {word:"JARRA",clue:"Recipiente para líquidos con asa y pico"},
+  {word:"JUDIA",clue:"Legumbre verde / mujer de religión judía"},
+  {word:"JUEGO",clue:"Actividad lúdica con reglas"},
+  {word:"JUNCO",clue:"Planta acuática de tallo cilíndrico"},
+  {word:"LABIA",clue:"Habilidad para hablar con facilidad y gracia"},
+  {word:"LABIO",clue:"Cada uno de los bordes de la boca"},
+  {word:"LACRE",clue:"Cera coloreada para sellar documentos"},
+  {word:"LADRO",clue:"Ladrón en italiano"},
+  {word:"LAMPO",clue:"Relámpago en italiano / flash de luz"},
+  {word:"LAPSO",clue:"Intervalo de tiempo / error involuntario"},
+  {word:"LARGO",clue:"De gran extensión en longitud"},
+  {word:"LATIR",clue:"Palpitar el corazón"},
+  {word:"LECHO",clue:"Cama / fondo de un río"},
+  {word:"LEGUA",clue:"Unidad de longitud antigua de unos 5 km"},
+  {word:"LENTE",clue:"Cristal óptico convergente o divergente"},
+  {word:"LEPRA",clue:"Enfermedad infecciosa crónica de la piel"},
+  {word:"LETRA",clue:"Signo del alfabeto / canción o texto"},
+  {word:"LIANA",clue:"Planta trepadora de selvas tropicales"},
+  {word:"LIBRE",clue:"Que no está sometido a restricciones"},
+  {word:"LICOR",clue:"Bebida alcohólica destilada y aromatizada"},
+  {word:"LIMON",clue:"Fruto cítrico de color amarillo"},
+  {word:"LINEA",clue:"Sucesión continua de puntos / conexión"},
+  {word:"LITRO",clue:"Unidad de capacidad del sistema métrico"},
+  {word:"LLAMA",clue:"Masa gaseosa de combustión luminosa / animal andino"},
+  {word:"LOGRO",clue:"Resultado satisfactorio conseguido"},
+  {word:"LOMA",clue:"Elevación suave del terreno"},
+  {word:"LONJA",clue:"Mercado de pescado / local de comercio"},
+  {word:"LUCRO",clue:"Ganancia económica de una actividad"},
+  {word:"LUGAR",clue:"Espacio o sitio determinado"},
+  {word:"LUMBA",clue:"Zona lumbar de la espalda"},
+  {word:"LUNAR",clue:"Marca pigmentada en la piel / relativo a la luna"},
+  {word:"MAGMA",clue:"Roca fundida en el interior de la Tierra"},
+  {word:"MAIZ",clue:"Cereal americano con mazorca y granos amarillos"},
+  {word:"MANGO",clue:"Fruta tropical de color naranja / asa de utensilio"},
+  {word:"MANTA",clue:"Tela gruesa para abrigarse / raya marina gigante"},
+  {word:"MAQUI",clue:"Resistencia francesa durante la WWII / fruta chilena"},
+  {word:"MARCA",clue:"Señal / nombre comercial de un producto"},
+  {word:"MARCO",clue:"Moldura que rodea algo / moneda alemana"},
+  {word:"MASCA",clue:"Tritura con los dientes, del verbo mascar"},
+  {word:"MASIA",clue:"Casa de campo catalana"},
+  {word:"MASTO",clue:"Prefijo que alude al pecho o mama"},
+  {word:"MEDIA",clue:"Promedio aritmético / prenda de punto"},
+  {word:"MELON",clue:"Fruta de verano grande y dulce"},
+  {word:"METAL",clue:"Elemento químico sólido y conductor"},
+  {word:"METRO",clue:"Unidad de longitud / transporte urbano subterráneo"},
+  {word:"MILLA",clue:"Unidad de longitud equivalente a 1,6 km"},
+  {word:"MITRA",clue:"Tocado litúrgico de los obispos"},
+  {word:"MOCIO",clue:"Propuesta formal en una reunión o asamblea"},
+  {word:"MOFLE",clue:"Escape del automóvil en México"},
+  {word:"MOJON",clue:"Señal de piedra que marca un límite"},
+  {word:"MOLDE",clue:"Recipiente que da forma a un material"},
+  {word:"MONO",clue:"Primate de cola / ropa de trabajo de una pieza"},
+  {word:"MORRO",clue:"Boca o hocico / promontorio costero"},
+  {word:"MOSCA",clue:"Insecto díptero doméstico molesto"},
+  {word:"MUELA",clue:"Diente molar / piedra de molino"},
+  {word:"MURGA",clue:"Banda de música callejera / cosa aburrida"},
+  {word:"MUSGO",clue:"Planta briofita que crece en lugares húmedos"},
+  {word:"MUSLO",clue:"Parte superior de la pierna"},
+  {word:"NALGA",clue:"Cada una de las partes carnosas del trasero"},
+  {word:"NARDO",clue:"Planta de flores blancas muy fragantes"},
+  {word:"NEUMA",clue:"Signo musical de la notación gregoriana"},
+  {word:"NEXO",clue:"Vínculo o unión entre cosas o personas"},
+  {word:"NICHO",clue:"Hueco en una pared para colocar figuras o urnas"},
+  {word:"NIMBO",clue:"Aureola luminosa / tipo de nube de lluvia"},
+  {word:"NOGAL",clue:"Árbol cuyo fruto es la nuez"},
+  {word:"NOMAD",clue:"Pueblo sin residencia fija (del inglés)"},
+  {word:"NORMA",clue:"Regla o pauta a seguir"},
+  {word:"NOTAS",clue:"Calificaciones académicas / signos musicales"},
+  {word:"NOVIO",clue:"Persona en relación sentimental o prometida"},
+  {word:"NYLON",clue:"Fibra sintética de poliamida"},
+  {word:"OBESO",clue:"Persona con exceso de peso corporal"},
+  {word:"OBICE",clue:"Obstáculo que impide algo"},
+  {word:"OBITO",clue:"Fallecimiento o muerte de una persona"},
+  {word:"OBOE",clue:"Instrumento de viento de lengüeta doble"},
+  {word:"OBRAR",clue:"Actuar de cierta manera"},
+  {word:"OBUS",clue:"Proyectil de artillería de gran calibre"},
+  {word:"OCLUS",clue:"Prefijo que indica cierre u oclusión"},
+  {word:"OCOTE",clue:"Pino resinoso de México"},
+  {word:"OCRE",clue:"Color tierra amarillento / mineral arcilloso"},
+  {word:"ODONT",clue:"Prefijo relativo a los dientes"},
+  {word:"ODRES",clue:"Plural de odre, recipiente de cuero para líquidos"},
+  {word:"OFITA",clue:"Roca plutónica de textura particular"},
+  {word:"OFLOX",clue:"Antibiótico fluoroquinolónico"},
+  {word:"OFURO",clue:"Baño japonés de agua caliente en tina de madera"},
+  {word:"OJERA",clue:"Coloración oscura bajo los ojos"},
+  {word:"OLEUM",clue:"Ácido sulfúrico fumante en química"},
+  {word:"OLOTE",clue:"Mazorca de maíz sin granos en México"},
+  {word:"ONDAS",clue:"Plural de onda, perturbación que se propaga"},
+  {word:"OPERA",clue:"Obra musical dramática cantada"},
+  {word:"OPTAR",clue:"Elegir entre varias opciones"},
+  {word:"OPUSC",clue:"Abreviatura de opúsculo, obra breve"},
+  {word:"ORBES",clue:"Esferas o globos celestes en plural"},
+  {word:"ORCO",clue:"Criatura de fantasía, guerrero brutal"},
+  {word:"ORDEN",clue:"Disposición correcta / mandato o instrucción"},
+  {word:"ORGIA",clue:"Festín desenfrenado / exceso y desorden"},
+  {word:"ORIOL",clue:"Pájaro de plumaje amarillo y negro"},
+  {word:"ORNIT",clue:"Prefijo relativo a las aves"},
+  {word:"ORUGA",clue:"Larva de mariposa / vehículo con cadenas"},
+  {word:"OSITO",clue:"Oso pequeño / peluche de oso"},
+  {word:"OSTIA",clue:"Molusco bivalvo / hostia en sentido vulgar"},
+  {word:"OTERO",clue:"Cerro o colina aislada en el paisaje"},
+  {word:"ORINA",clue:"Líquido excretado por los riñones"},
+  {word:"OVALO",clue:"Figura geométrica con forma de huevo"},
+  {word:"OVEJA",clue:"Hembra del carnero, produce lana y leche"},
+  {word:"OXIDO",clue:"Compuesto de un elemento con oxígeno"},
+  {word:"PAICO",clue:"Hierba aromática medicinal andina"},
+  {word:"PAILA",clue:"Recipiente grande y plano para cocinar"},
+  {word:"PALCO",clue:"Balcón en un teatro o estadio"},
+  {word:"PALMA",clue:"Árbol tropical / parte interna de la mano"},
+  {word:"PALMO",clue:"Medida de longitud equivalente a la mano extendida"},
+  {word:"PAMPA",clue:"Llanura extensa de América del Sur"},
+  {word:"PANAL",clue:"Estructura de cera donde viven las abejas"},
+  {word:"PANEL",clue:"Superficie plana / grupo de expertos"},
+  {word:"PANO",clue:"Tela de lana / trapo para limpiar"},
+  {word:"PAPAS",clue:"Patatas en América Latina"},
+  {word:"PAREO",clue:"Falda larga y envolvente de tela ligera"},
+  {word:"PARVO",clue:"Pequeño / virus que afecta a animales"},
+  {word:"PASTO",clue:"Hierba que come el ganado"},
+  {word:"PATIO",clue:"Espacio descubierto interior de una casa"},
+  {word:"PAVOR",clue:"Miedo muy grande e intenso"},
+  {word:"PEDAL",clue:"Palanca que se acciona con el pie"},
+  {word:"PEINE",clue:"Utensilio de dientes para ordenar el pelo"},
+  {word:"PELMA",clue:"Persona pesada y aburrida"},
+  {word:"PENCA",clue:"Hoja carnosa de una planta / paliza"},
+  {word:"PERNO",clue:"Pieza cilíndrica metálica de sujeción"},
+  {word:"PEZON",clue:"Saliente central de la mama"},
+  {word:"PIANO",clue:"Instrumento de teclado y cuerdas percutidas"},
+  {word:"PICOR",clue:"Sensación irritante que provoca rascarse"},
+  {word:"PILAR",clue:"Soporte vertical arquitectónico / persona fundamental"},
+  {word:"PILON",clue:"Recipiente grande de piedra para agua"},
+  {word:"PIOJO",clue:"Insecto parásito que vive en el cabello"},
+  {word:"PISTA",clue:"Señal o indicio / superficie para deportes"},
+  {word:"PIXEL",clue:"Unidad mínima de una imagen digital"},
+  {word:"PLAGA",clue:"Calamidad o infestación masiva"},
+  {word:"PLANO",clue:"Superficie sin relieve / dibujo técnico"},
+  {word:"PLATA",clue:"Metal precioso de color blanco brillante"},
+  {word:"PLOMO",clue:"Metal pesado gris / bala / persona aburrida"},
+  {word:"POBRE",clue:"Persona que carece de lo necesario"},
+  {word:"PODER",clue:"Capacidad de hacer algo / autoridad"},
+  {word:"POEMA",clue:"Composición literaria en verso"},
+  {word:"POLIO",clue:"Enfermedad viral que afecta al sistema nervioso"},
+  {word:"POLVO",clue:"Partículas finas de tierra en suspensión"},
+  {word:"POMPA",clue:"Ostentación y boato / burbuja de jabón"},
+  {word:"PONCE",clue:"Persona cobarde o perezosa / nombre propio"},
+  {word:"PORRA",clue:"Palo grueso / exclamación de enfado"},
+  {word:"PORTA",clue:"Lleva o transporta, forma verbal"},
+  {word:"POSIT",clue:"Nota adhesiva pequeña de colores"},
+  {word:"POTRA",clue:"Yegua joven / hernia inguinal / suerte"},
+  {word:"PSICO",clue:"Prefijo relativo a la mente o psicología"},
+  {word:"PUBIS",clue:"Parte inferior del abdomen, zona del vello púbico"},
+  {word:"PULGA",clue:"Insecto parásito saltador que chupa sangre"},
+  {word:"PULPO",clue:"Molusco marino con ocho tentáculos"},
+  {word:"PULSO",clue:"Latido de las arterias perceptible al tacto"},
+  {word:"PUNTA",clue:"Extremo agudo o final de algo"},
+  {word:"PURIN",clue:"Líquido residual de excrementos animales"},
+  {word:"PUZLE",clue:"Rompecabezas de piezas encajables"},
+  {word:"QUIMO",clue:"Contenido estomacal semidigerido"},
+  {word:"QUOTA",clue:"Parte proporcional asignada a cada uno"},
+  {word:"RADON",clue:"Gas noble radiactivo, elemento 86"},
+  {word:"RAFAL",clue:"Ráfaga de viento fuerte"},
+  {word:"RAMAL",clue:"Bifurcación de una vía o carretera"},
+  {word:"RAPAZ",clue:"Ave carnívora de vuelo rápido / ladrón"},
+  {word:"RASGO",clue:"Característica o rasgo distintivo"},
+  {word:"RAYON",clue:"Fibra textil artificial derivada de la celulosa"},
+  {word:"REBAJ",clue:"Reducción de precio o altura"},
+  {word:"RECTA",clue:"Línea sin curva / tramo final de una carrera"},
+  {word:"REFLE",clue:"Reflejo involuntario del sistema nervioso"},
+  {word:"REGLA",clue:"Norma o pauta / instrumento para trazar líneas"},
+  {word:"REJON",clue:"Lanza usada en la corrida a caballo"},
+  {word:"RENAL",clue:"Relativo a los riñones"},
+  {word:"RENTA",clue:"Ingreso periódico de dinero"},
+  {word:"REPLA",clue:"Rellano o descansillo de escalera"},
+  {word:"REPTA",clue:"Se arrastra, modo de moverse de reptiles"},
+  {word:"RETAL",clue:"Trozo sobrante de tela"},
+  {word:"RIADA",clue:"Crecida repentina de un río"},
+  {word:"RIDER",clue:"Jinete o ciclista / cláusula adicional"},
+  {word:"RIGOR",clue:"Exactitud y precisión estricta"},
+  {word:"ROBOT",clue:"Máquina autómata programable"},
+  {word:"ROCIO",clue:"Gotas de agua que se forman por condensación"},
+  {word:"RODIL",clue:"Recinto para ordeñar el ganado"},
+  {word:"ROMBO",clue:"Figura geométrica con cuatro lados iguales"},
+  {word:"RONDA",clue:"Patrulla o recorrido de vigilancia"},
+  {word:"RONCO",clue:"Que tiene la voz áspera o afónica"},
+  {word:"RONIN",clue:"Samurái sin señor en el Japón feudal"},
+  {word:"ROSCO",clue:"Pan en forma de anillo"},
+  {word:"RUBIO",clue:"De pelo o color dorado claro"},
+  {word:"RUMBA",clue:"Ritmo musical y danza de origen cubano"},
+  {word:"RUNAS",clue:"Letras del alfabeto germánico antiguo"},
+  {word:"RUSCO",clue:"Arbusto de hojas punzantes y bayas rojas"},
+  {word:"RUSIA",clue:"País más extenso del mundo"},
+  {word:"SALMO",clue:"Poema o canto sagrado de la Biblia"},
+  {word:"SALUD",clue:"Estado de bienestar físico y mental"},
+  {word:"SAMBA",clue:"Danza y música popular brasileña"},
+  {word:"SARCO",clue:"Prefijo que alude a la carne en medicina"},
+  {word:"SAVIA",clue:"Líquido nutritivo que circula por las plantas"},
+  {word:"SAXO",clue:"Instrumento de viento de metal con lengüeta"},
+  {word:"SCION",clue:"Vástago o descendiente / modelo de coche Toyota"},
+  {word:"SECAR",clue:"Quitar la humedad de algo"},
+  {word:"SEIBO",clue:"Árbol nacional de Argentina y Uruguay"},
+  {word:"SENIL",clue:"Relativo a la vejez / deterioro cognitivo"},
+  {word:"SEMEN",clue:"Líquido reproductor masculino"},
+  {word:"SEPIA",clue:"Color marrón oscuro / molusco que produce tinta"},
+  {word:"SIFON",clue:"Tubo curvo para trasvasar líquidos / agua con gas"},
+  {word:"SILBA",clue:"Emite un sonido agudo con los labios"},
+  {word:"SILBO",clue:"Silbido / lenguaje silbado de la Gomera"},
+  {word:"SILEX",clue:"Roca de sílice usada para hacer fuego"},
+  {word:"SINAP",clue:"Mostaza silvestre, planta de la familia Brassica"},
+  {word:"SIRGA",clue:"Cuerda para arrastrar embarcaciones"},
+  {word:"SIRTE",clue:"Banco de arena peligroso en el mar"},
+  {word:"SISMO",clue:"Temblor o sacudida de la corteza terrestre"},
+  {word:"SOLAR",clue:"Relativo al sol / terreno sin edificar"},
+  {word:"SOPLO",clue:"Acción de soplar / soplo cardíaco"},
+  {word:"SORDO",clue:"Persona que no puede oír"},
+  {word:"SORGO",clue:"Cereal tropical resistente a la sequía"},
+  {word:"SORNA",clue:"Lentitud burlona / ironía disimulada"},
+  {word:"SUCRE",clue:"Capital histórica de Bolivia"},
+  {word:"SUERO",clue:"Líquido intravenoso / parte líquida de la sangre"},
+  {word:"SURCO",clue:"Hendidura que deja el arado en la tierra"},
+  {word:"TABLA",clue:"Pieza plana de madera / lista de datos"},
+  {word:"TAIGA",clue:"Bosque frío de coníferas del hemisferio norte"},
+  {word:"TAPIZ",clue:"Tela decorativa que cuelga en las paredes"},
+  {word:"TAPON",clue:"Pieza que cierra un orificio"},
+  {word:"TARSO",clue:"Conjunto de huesos del tobillo"},
+  {word:"TEDIO",clue:"Aburrimiento profundo y pesado"},
+  {word:"TENIA",clue:"Gusano parásito intestinal, solitaria"},
+  {word:"TENON",clue:"Espiga de madera que encaja en una mortaja"},
+  {word:"TENUE",clue:"Delgado, sutil o de poca intensidad"},
+  {word:"TERMO",clue:"Recipiente aislante para conservar temperatura"},
+  {word:"TIBIA",clue:"Hueso de la pierna entre rodilla y tobillo"},
+  {word:"TIBIO",clue:"Templado, ni frío ni caliente"},
+  {word:"TIMON",clue:"Órgano de gobierno de un barco o avión"},
+  {word:"TINTE",clue:"Colorante para cabello u otras superficies"},
+  {word:"TITAN",clue:"Ser mitológico gigante / persona de gran poder"},
+  {word:"TIZON",clue:"Palo a medio quemar con brasa"},
+  {word:"TONEL",clue:"Recipiente grande de madera para vino"},
+  {word:"TONGA",clue:"País insular de Oceanía"},
+  {word:"TORPE",clue:"Falto de agilidad o habilidad"},
+  {word:"TRAMA",clue:"Argumento de una historia / hilo transversal del tejido"},
+  {word:"TRAMO",clue:"Sección de una vía o escalera"},
+  {word:"TRATO",clue:"Acuerdo o convenio entre partes"},
+  {word:"TRETA",clue:"Engaño o ardid para conseguir algo"},
+  {word:"TRIPA",clue:"Intestino / panza o barriga"},
+  {word:"TROZO",clue:"Fragmento o porción de algo"},
+  {word:"TRUFA",clue:"Hongo subterráneo de alto valor gastronómico"},
+  {word:"TUBO",clue:"Conducto cilíndrico hueco"},
+  {word:"TUPE",clue:"Mechón de pelo en la frente / atrevimiento"},
+  {word:"TURBA",clue:"Multitud desordenada / carbón vegetal fósil"},
+  {word:"TURNO",clue:"Vez o período que corresponde a alguien"},
+  {word:"UNGIR",clue:"Aplicar aceite sagrado en una ceremonia"},
+  {word:"UNTAR",clue:"Extender una sustancia grasa sobre algo"},
+  {word:"URANO",clue:"Séptimo planeta del sistema solar"},
+  {word:"URICO",clue:"Relativo al ácido úrico, producido por el metabolismo"},
+  {word:"UTERO",clue:"Órgano reproductor femenino donde se desarrolla el feto"},
+  {word:"UVULA",clue:"Apéndice blando que cuelga del paladar"},
+  {word:"VAGON",clue:"Cada uno de los compartimentos de un tren"},
+  {word:"VALOR",clue:"Precio de algo / valentía o coraje"},
+  {word:"VALVA",clue:"Cada mitad de una concha bivalva"},
+  {word:"VANDA",clue:"Orquídea tropical de flores grandes"},
+  {word:"VARIZ",clue:"Dilatación de una vena, especialmente en piernas"},
+  {word:"VASCO",clue:"Natural del País Vasco"},
+  {word:"VASTO",clue:"De grandes dimensiones o extensión"},
+  {word:"VELAR",clue:"Vigilar durante la noche / consonante velar"},
+  {word:"VENIA",clue:"Permiso o licencia / reverencia con la cabeza"},
+  {word:"VENMO",clue:"Aplicación de pagos digitales estadounidense"},
+  {word:"VENTA",clue:"Transacción comercial de un bien"},
+  {word:"VERBO",clue:"Categoría gramatical que expresa acción"},
+  {word:"VERSO",clue:"Línea de un poema / lado contrario"},
+  {word:"VESTE",clue:"Vestimenta o traje, especialmente ritual"},
+  {word:"VIBRA",clue:"Oscila o tiembla con rapidez"},
+  {word:"VIGOR",clue:"Fuerza y energía vitales"},
+  {word:"VIRGO",clue:"Sexto signo del zodíaco / persona nacida bajo él"},
+  {word:"VIRUS",clue:"Agente infeccioso microscópico"},
+  {word:"VISON",clue:"Animal de piel muy apreciada en peletería"},
+  {word:"VISTO",clue:"Participio de ver / marca de comprobación"},
+  {word:"VITAL",clue:"Indispensable para la vida"},
+  {word:"VITRO",clue:"En ___, experimento fuera del organismo"},
+  {word:"VIUDA",clue:"Mujer cuyo esposo ha fallecido"},
+  {word:"VIVAC",clue:"Campamento al aire libre sin tienda"},
+  {word:"VOCAL",clue:"Letra que suena sola / miembro de una junta"},
+  {word:"VODKA",clue:"Bebida alcohólica destilada de cereales o patata"},
+  {word:"VOLCA",clue:"Hace volcar o derramar"},
+  {word:"VOLEO",clue:"Golpe dado a algo en el aire"},
+  {word:"VULVA",clue:"Genitales externos femeninos"},
+  {word:"YANKI",clue:"Estadounidense, de manera informal"},
+  {word:"YERBA",clue:"Hierba, especialmente la mate"},
+  {word:"YODOO",clue:"Elemento químico no metálico, antiséptico"},
+  {word:"ZAINO",clue:"Castaño oscuro sin manchas, dicho de animales"},
+  {word:"ZAMPA",clue:"Come con voracidad, forma verbal coloquial"},
+  {word:"ZARPA",clue:"Pata con garras de animal salvaje"},
+  {word:"ZORRO",clue:"Cánido salvaje astuto de cola esponjosa"},
+  {word:"ZUECO",clue:"Calzado de madera de zoca"},
+  {word:"ZUMO",clue:"Jugo extraído de frutas o verduras"},
+  {word:"ZURDO",clue:"Persona que usa preferentemente la mano izquierda"},
+];
+
+// ─── PUZZLE GENERATOR ────────────────────────────────────────────────────────
+const SIZE = 5;
+let puzzle = null;
+let selectedCell = null;
+let selectedDir = 'across';
+let timerInterval = null;
+let seconds = 0;
+let started = false;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function canPlace(grid, word, r, c, dir, placed) {
+  if (dir === 'across') {
+    if (c + word.length > SIZE) return false;
+    if (c > 0 && grid[r][c-1] !== null) return false;
+    if (c + word.length < SIZE && grid[r][c + word.length] !== null) return false;
+    // Block: another across word already starts at this same cell
+    if (placed && placed.some(p => p.dir === 'across' && p.r === r && p.c === c)) return false;
+    let intersects = false;
+    for (let i = 0; i < word.length; i++) {
+      const cell = grid[r][c+i];
+      if (cell !== null && cell !== word[i]) return false;
+      if (cell === word[i]) intersects = true;
+      if (cell === null) {
+        if (r > 0 && grid[r-1][c+i] !== null) return false;
+        if (r < SIZE-1 && grid[r+1][c+i] !== null) return false;
+      }
+    }
+    return intersects;
+  } else {
+    if (r + word.length > SIZE) return false;
+    if (r > 0 && grid[r-1][c] !== null) return false;
+    if (r + word.length < SIZE && grid[r + word.length][c] !== null) return false;
+    // Block: another down word already starts at this same cell
+    if (placed && placed.some(p => p.dir === 'down' && p.r === r && p.c === c)) return false;
+    let intersects = false;
+    for (let i = 0; i < word.length; i++) {
+      const cell = grid[r+i][c];
+      if (cell !== null && cell !== word[i]) return false;
+      if (cell === word[i]) intersects = true;
+      if (cell === null) {
+        if (c > 0 && grid[r+i][c-1] !== null) return false;
+        if (c < SIZE-1 && grid[r+i][c+1] !== null) return false;
+      }
+    }
+    return intersects;
+  }
+}
+
+function place(grid, word, r, c, dir) {
+  const g = grid.map(row => [...row]);
+  for (let i = 0; i < word.length; i++) {
+    if (dir === 'across') g[r][c+i] = word[i];
+    else g[r+i][c] = word[i];
+  }
+  return g;
+}
+
+function findPlacements(grid, word, placed) {
+  const placements = [];
+  for (const dir of ['across', 'down']) {
+    const len = word.length;
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (dir === 'across' && c + len > SIZE) continue;
+        if (dir === 'down' && r + len > SIZE) continue;
+        if (canPlace(grid, word, r, c, dir, placed)) {
+          placements.push({ r, c, dir });
+        }
+      }
+    }
+  }
+  return placements;
+}
+
+function countDir(placed, dir) {
+  return placed.filter(p => p.dir === dir).length;
+}
+
+function buildNumbers(grid, placed) {
+  const numbers = {};
+  let num = 1;
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (grid[r][c] === null) continue;
+      const startsAcross = placed.some(p => p.dir === 'across' && p.r === r && p.c === c);
+      const startsDown   = placed.some(p => p.dir === 'down'   && p.r === r && p.c === c);
+      if (startsAcross || startsDown) numbers[`${r},${c}`] = num++;
+    }
+  }
+  return numbers;
+}
+
+// Score a puzzle attempt: higher = better balance
+function puzzleScore(placed) {
+  const na = countDir(placed, 'across');
+  const nd = countDir(placed, 'down');
+  const total = placed.length;
+  const balance = -Math.abs(na - nd);         // penalize imbalance
+  const minEach = Math.min(na, nd);            // reward having more of the weaker side
+  return total * 2 + balance * 3 + minEach * 5;
+}
+
+function tryBuild(wordPool, minEach, maxTotal) {
+  let grid = Array.from({length: SIZE}, () => Array(SIZE).fill(null));
+  const placed = [];
+
+  // Place first word horizontally
+  const first = wordPool.find(w => w.word.length >= 3 && w.word.length <= SIZE);
+  if (!first) return null;
+  const startC = Math.floor((SIZE - first.word.length) / 2);
+  grid = place(grid, first.word, 2, startC, 'across');
+  placed.push({ ...first, r: 2, c: startC, dir: 'across' });
+
+  // Phase 1: force a vertical word crossing the first horizontal
+  for (const entry of wordPool) {
+    if (placed.find(p => p.word === entry.word)) continue;
+    const ps = findPlacements(grid, entry.word, placed).filter(p => p.dir === 'down');
+    if (ps.length > 0) {
+      const pl = ps[Math.floor(Math.random() * ps.length)];
+      grid = place(grid, entry.word, pl.r, pl.c, pl.dir);
+      placed.push({ ...entry, ...pl });
+      break;
+    }
+  }
+
+  // Phase 2: greedily add words, strictly prioritising the lagging direction
+  for (const entry of wordPool) {
+    if (placed.find(p => p.word === entry.word)) continue;
+    if (placed.length >= maxTotal) break;
+
+    const na = countDir(placed, 'across');
+    const nd = countDir(placed, 'down');
+
+    // Build priority list: if one dir is behind by 2+ always try it first
+    let dirs;
+    if (na - nd >= 2)      dirs = ['down', 'across'];
+    else if (nd - na >= 2) dirs = ['across', 'down'];
+    else                   dirs = shuffle(['across', 'down']);
+
+    let placed_flag = false;
+    for (const dir of dirs) {
+      const ps = findPlacements(grid, entry.word, placed).filter(p => p.dir === dir);
+      if (ps.length > 0) {
+        const pl = ps[Math.floor(Math.random() * ps.length)];
+        grid = place(grid, entry.word, pl.r, pl.c, pl.dir);
+        placed.push({ ...entry, ...pl });
+        placed_flag = true;
+        break;
+      }
+    }
+    // fallback: any direction
+    if (!placed_flag) {
+      const ps = findPlacements(grid, entry.word, placed);
+      if (ps.length > 0) {
+        const pl = ps[Math.floor(Math.random() * ps.length)];
+        grid = place(grid, entry.word, pl.r, pl.c, pl.dir);
+        placed.push({ ...entry, ...pl });
+      }
+    }
+  }
+
+  const na = countDir(placed, 'across');
+  const nd = countDir(placed, 'down');
+  if (na < minEach || nd < minEach) return null;
+
+  return { grid, placed, score: puzzleScore(placed) };
+}
+
+function generatePuzzle() {
+  const MIN_EACH  = 4;   // minimum per direction
+  const MAX_TOTAL = 10;
+  const ATTEMPTS  = 120; // more attempts to find a good balanced puzzle
+
+  let best = null;
+
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const wordPool = shuffle(WORD_DB);
+    const result = tryBuild(wordPool, MIN_EACH, MAX_TOTAL);
+    if (!result) continue;
+
+    if (!best || result.score > best.score) {
+      best = result;
+    }
+
+    // Stop early if we already have a great balanced puzzle (5+5)
+    const na = countDir(best.placed, 'across');
+    const nd = countDir(best.placed, 'down');
+    if (na >= 5 && nd >= 5) break;
+  }
+
+  if (!best) return null;
+
+  const { grid, placed } = best;
+  const numbers = buildNumbers(grid, placed);
+
+  const clues = { across: [], down: [] };
+  for (const p of placed) {
+    const n = numbers[`${p.r},${p.c}`];
+    if (p.dir === 'across') clues.across.push({ num: n, clue: p.clue, word: p.word, r: p.r, c: p.c });
+    else                    clues.down.push  ({ num: n, clue: p.clue, word: p.word, r: p.r, c: p.c });
+  }
+  clues.across.sort((a,b) => a.num - b.num);
+  clues.down.sort  ((a,b) => a.num - b.num);
+
+  return { grid, placed, numbers, clues };
+}
+
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+let userGrid = [];
+
+function renderPuzzle() {
+  const g = document.getElementById('grid');
+  g.style.gridTemplateColumns = `repeat(${SIZE}, var(--cell-size))`;
+  g.innerHTML = '';
+  userGrid = Array.from({length: SIZE}, () => Array(SIZE).fill(''));
+
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const div = document.createElement('div');
+      div.className = 'cell' + (puzzle.grid[r][c] === null ? ' black' : '');
+      div.dataset.r = r;
+      div.dataset.c = c;
+
+      if (puzzle.grid[r][c] !== null) {
+        const num = puzzle.numbers[`${r},${c}`];
+        if (num) {
+          const span = document.createElement('span');
+          span.className = 'cell-number';
+          span.textContent = num;
+          div.appendChild(span);
+        }
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.maxLength = 1;
+        inp.dataset.r = r;
+        inp.dataset.c = c;
+        inp.autocomplete = 'off';
+        inp.addEventListener('click', () => handleCellClick(r, c));
+        inp.addEventListener('keydown', (e) => handleKey(e, r, c));
+        div.appendChild(inp);
+      }
+
+      g.appendChild(div);
+    }
+  }
+
+  renderClues();
+}
+
+function renderClues() {
+  const ac = document.getElementById('across-clues');
+  const dn = document.getElementById('down-clues');
+  ac.innerHTML = '';
+  dn.innerHTML = '';
+
+  for (const cl of puzzle.clues.across) {
+    const d = document.createElement('div');
+    d.className = 'clue-item';
+    d.id = `clue-across-${cl.num}`;
+    d.innerHTML = `<span class="clue-num">${cl.num}</span><span class="clue-text">${cl.clue}</span>`;
+    d.addEventListener('click', () => {
+      selectClue(cl.num, 'across');
+    });
+    ac.appendChild(d);
+  }
+  for (const cl of puzzle.clues.down) {
+    const d = document.createElement('div');
+    d.className = 'clue-item';
+    d.id = `clue-down-${cl.num}`;
+    d.innerHTML = `<span class="clue-num">${cl.num}</span><span class="clue-text">${cl.clue}</span>`;
+    d.addEventListener('click', () => {
+      selectClue(cl.num, 'down');
+    });
+    dn.appendChild(d);
+  }
+}
+
+function selectClue(num, dir) {
+  const cl = (dir === 'across' ? puzzle.clues.across : puzzle.clues.down).find(c => c.num === num);
+  if (!cl) return;
+  selectedDir = dir;
+  focusCell(cl.r, cl.c);
+}
+
+function handleCellClick(r, c) {
+  if (!started) startTimer();
+  if (selectedCell && selectedCell[0] === r && selectedCell[1] === c) {
+    // toggle direction
+    const newDir = selectedDir === 'across' ? 'down' : 'across';
+    const hasAcross = puzzle.placed.some(p => p.dir === 'across' && p.r === r && p.c <= c && c < p.c + p.word.length);
+    const hasDown = puzzle.placed.some(p => p.dir === 'down' && p.c === c && p.r <= r && r < p.r + p.word.length);
+    if (newDir === 'across' && hasAcross) selectedDir = 'across';
+    else if (newDir === 'down' && hasDown) selectedDir = 'down';
+  } else {
+    // pick best direction
+    const hasAcross = puzzle.placed.some(p => p.dir === 'across' && p.r === r && p.c <= c && c < p.c + p.word.length);
+    const hasDown = puzzle.placed.some(p => p.dir === 'down' && p.c === c && p.r <= r && r < p.r + p.word.length);
+    if (!hasAcross && hasDown) selectedDir = 'down';
+    else selectedDir = 'across';
+  }
+  focusCell(r, c);
+}
+
+function focusCell(r, c) {
+  selectedCell = [r, c];
+  highlightCells();
+  const inp = document.querySelector(`input[data-r="${r}"][data-c="${c}"]`);
+  if (inp) inp.focus();
+  updateClueHighlight();
+}
+
+function highlightCells() {
+  document.querySelectorAll('.cell').forEach(el => {
+    el.classList.remove('highlighted', 'selected');
+  });
+  if (!selectedCell) return;
+  const [r, c] = selectedCell;
+
+  // find the word for this cell+dir
+  const wordEntry = puzzle.placed.find(p => {
+    if (p.dir !== selectedDir) return false;
+    if (selectedDir === 'across') return p.r === r && p.c <= c && c < p.c + p.word.length;
+    return p.c === c && p.r <= r && r < p.r + p.word.length;
+  });
+
+  if (wordEntry) {
+    for (let i = 0; i < wordEntry.word.length; i++) {
+      const cr = selectedDir === 'across' ? wordEntry.r : wordEntry.r + i;
+      const cc = selectedDir === 'across' ? wordEntry.c + i : wordEntry.c;
+      const cell = document.querySelector(`.cell[data-r="${cr}"][data-c="${cc}"]`);
+      if (cell && !cell.classList.contains('correct')) cell.classList.add('highlighted');
+    }
+  }
+
+  const selCell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+  if (selCell && !selCell.classList.contains('correct')) {
+    selCell.classList.remove('highlighted');
+    selCell.classList.add('selected');
+  }
+}
+
+function updateClueHighlight() {
+  document.querySelectorAll('.clue-item').forEach(el => el.classList.remove('active'));
+  if (!selectedCell) return;
+  const [r, c] = selectedCell;
+  const wordEntry = puzzle.placed.find(p => {
+    if (p.dir !== selectedDir) return false;
+    if (selectedDir === 'across') return p.r === r && p.c <= c && c < p.c + p.word.length;
+    return p.c === c && p.r <= r && r < p.r + p.word.length;
+  });
+  if (wordEntry) {
+    const num = puzzle.numbers[`${wordEntry.r},${wordEntry.c}`];
+    const el = document.getElementById(`clue-${wordEntry.dir}-${num}`);
+    if (el) el.classList.add('active');
+  }
+}
+
+function handleKey(e, r, c) {
+  if (!started) startTimer();
+  const key = e.key.toUpperCase();
+
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    advanceWord(e.shiftKey ? -1 : 1);
+    return;
+  }
+
+  if (e.key === 'ArrowRight') { e.preventDefault(); selectedDir = 'across'; moveDir(r, c, 0, 1); return; }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); selectedDir = 'across'; moveDir(r, c, 0, -1); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); selectedDir = 'down'; moveDir(r, c, 1, 0); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); selectedDir = 'down'; moveDir(r, c, -1, 0); return; }
+
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    const inp = document.querySelector(`input[data-r="${r}"][data-c="${c}"]`);
+    if (inp && inp.value) {
+      inp.value = '';
+      userGrid[r][c] = '';
+    } else {
+      moveBack(r, c);
+    }
+    highlightCells();
+    return;
+  }
+
+  if (key.length === 1 && key.match(/[A-ZÁÉÍÓÚÑÜ]/)) {
+    e.preventDefault();
+    const inp = document.querySelector(`input[data-r="${r}"][data-c="${c}"]`);
+    if (inp) { inp.value = key; userGrid[r][c] = key; }
+    moveForward(r, c);
+  }
+}
+
+function moveForward(r, c) {
+  if (selectedDir === 'across') moveDir(r, c, 0, 1);
+  else moveDir(r, c, 1, 0);
+}
+function moveBack(r, c) {
+  if (selectedDir === 'across') moveDir(r, c, 0, -1);
+  else moveDir(r, c, -1, 0);
+}
+function moveDir(r, c, dr, dc) {
+  let nr = r + dr, nc = c + dc;
+  while (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
+    if (puzzle.grid[nr][nc] !== null) {
+      focusCell(nr, nc);
+      return;
+    }
+    nr += dr; nc += dc;
+  }
+}
+
+function advanceWord(dir) {
+  const allClues = [
+    ...puzzle.clues.across.map(c => ({...c, dir:'across'})),
+    ...puzzle.clues.down.map(c => ({...c, dir:'down'}))
+  ];
+  if (!selectedCell) { focusCell(allClues[0].r, allClues[0].c); return; }
+  const [r, c] = selectedCell;
+  const cur = allClues.findIndex(p => {
+    if (p.dir !== selectedDir) return false;
+    if (selectedDir === 'across') return p.r === r && p.c <= c && c < p.c + p.word.length;
+    return p.c === c && p.r <= r && r < p.r + p.word.length;
+  });
+  const next = (cur + dir + allClues.length) % allClues.length;
+  const nw = allClues[next];
+  selectedDir = nw.dir;
+  focusCell(nw.r, nw.c);
+}
+
+// ─── CHECK / REVEAL ───────────────────────────────────────────────────────────
+function checkPuzzle() {
+  let allCorrect = true;
+  let anyWrong = false;
+  for (const p of puzzle.placed) {
+    let wordComplete = true;
+    for (let i = 0; i < p.word.length; i++) {
+      const r = p.dir === 'across' ? p.r : p.r + i;
+      const c = p.dir === 'across' ? p.c + i : p.c;
+      const inp = document.querySelector(`input[data-r="${r}"][data-c="${c}"]`);
+      const val = inp ? inp.value : '';
+      if (val !== p.word[i]) { allCorrect = false; wordComplete = false; }
+      if (val && val !== p.word[i]) anyWrong = true;
+    }
+    if (wordComplete) markWordCorrect(p);
+  }
+
+  if (allCorrect) { winPuzzle(); return; }
+  const bar = document.getElementById('status-bar');
+  if (anyWrong) bar.textContent = '⚠ Hay errores — sigue intentándolo';
+  else bar.textContent = 'Completa todas las palabras';
+  setTimeout(() => { bar.textContent = ''; }, 2500);
+}
+
+function markWordCorrect(p) {
+  for (let i = 0; i < p.word.length; i++) {
+    const r = p.dir === 'across' ? p.r : p.r + i;
+    const c = p.dir === 'across' ? p.c + i : p.c;
+    const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+    if (cell) { cell.classList.remove('highlighted','selected'); cell.classList.add('correct'); }
+  }
+  const num = puzzle.numbers[`${p.r},${p.c}`];
+  const clueEl = document.getElementById(`clue-${p.dir}-${num}`);
+  if (clueEl) clueEl.classList.add('solved');
+}
+
+function revealAll() {
+  for (const p of puzzle.placed) {
+    for (let i = 0; i < p.word.length; i++) {
+      const r = p.dir === 'across' ? p.r : p.r + i;
+      const c = p.dir === 'across' ? p.c + i : p.c;
+      const inp = document.querySelector(`input[data-r="${r}"][data-c="${c}"]`);
+      if (inp) { inp.value = p.word[i]; userGrid[r][c] = p.word[i]; }
+    }
+    markWordCorrect(p);
+  }
+  stopTimer();
+  document.getElementById('status-bar').textContent = 'Puzzle revelado — ¡prueba con uno nuevo!';
+}
+
+function winPuzzle() {
+  stopTimer();
+  document.getElementById('win-time').textContent = formatTime(seconds);
+  document.getElementById('win-overlay').classList.add('show');
+}
+
+// ─── TIMER ────────────────────────────────────────────────────────────────────
+function startTimer() {
+  started = true;
+  timerInterval = setInterval(() => {
+    seconds++;
+    document.getElementById('timer').textContent = formatTime(seconds);
+  }, 1000);
+}
+function stopTimer() {
+  clearInterval(timerInterval);
+}
+function formatTime(s) {
+  const m = Math.floor(s/60);
+  const ss = s%60;
+  return `${m}:${ss.toString().padStart(2,'0')}`;
+}
+
+// ─── NEW PUZZLE ───────────────────────────────────────────────────────────────
+function newPuzzle() {
+  stopTimer();
+  seconds = 0;
+  started = false;
+  document.getElementById('timer').textContent = '0:00';
+  document.getElementById('status-bar').textContent = '';
+  selectedCell = null;
+  selectedDir = 'across';
+
+  puzzle = generatePuzzle();
+
+  if (!puzzle) {
+    document.getElementById('status-bar').textContent = 'Error generando puzzle, intenta de nuevo.';
+    return;
+  }
+
+  renderPuzzle();
+
+  // Auto-select first clue
+  setTimeout(() => {
+    if (puzzle.clues.across.length) {
+      const first = puzzle.clues.across[0];
+      selectedDir = 'across';
+      focusCell(first.r, first.c);
+    }
+  }, 100);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const now = new Date();
+  document.getElementById('date-display').textContent = now.toLocaleDateString('es-ES', {weekday:'short', day:'numeric', month:'long', year:'numeric'}).toUpperCase();
+  newPuzzle();
+});
+</script>
+</body>
+</html>
