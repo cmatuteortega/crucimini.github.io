@@ -221,7 +221,7 @@
 </div>
 
 <!-- Result overlay (win or lose after 3 attempts) -->
-<div id="result-overlay">
+<div id="result-overlay" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="result-card">
     <div class="emoji-big" id="result-emoji"></div>
     <div class="big" id="result-title"></div>
@@ -230,17 +230,19 @@
     <div class="share-text" id="share-text-display"></div>
     <button class="primary share-btn" onclick="copyShare()">Copiar resultado 📋</button>
     <div class="next-puzzle-info" id="next-puzzle-info"></div>
+    <button style="margin-top:12px;width:100%;opacity:0.6" onclick="document.getElementById('result-overlay').classList.remove('show')">Ver crucigrama ↓</button>
   </div>
 </div>
 
 <!-- Locked overlay (already played today) -->
-<div id="locked-overlay">
+<div id="locked-overlay" onclick="if(event.target===this)this.classList.remove('show')">
   <div class="locked-card">
     <div class="big">Ya jugaste hoy</div>
     <div class="sub">El próximo puzzle en:</div>
     <div class="countdown" id="countdown"></div>
     <div class="locked-share" id="locked-share-text"></div>
     <button class="primary" style="width:100%;margin-bottom:8px" onclick="copyShare()">Copiar resultado 📋</button>
+    <button style="margin-top:4px;width:100%;opacity:0.6" onclick="document.getElementById('locked-overlay').classList.remove('show')">Ver crucigrama ↓</button>
   </div>
 </div>
 
